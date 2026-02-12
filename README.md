@@ -14,9 +14,9 @@ hello world!
 
 ```
 ├── common/
-│ ├── Inc/
+│ ├── include/
 │ │ └── logger.hpp
-│ ├── Src/
+│ ├── src/
 │ │ └── logger.cpp
 │ └── CMakeLists.txt
 │

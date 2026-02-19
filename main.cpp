@@ -7,8 +7,6 @@
 
 int main(int argc, char** argv) {
 
-    dummy a;
-    a.helloworld();
 
     std::string configPath = "config.json";
 

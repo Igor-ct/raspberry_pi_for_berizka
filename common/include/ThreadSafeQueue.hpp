@@ -7,12 +7,12 @@ template<typename T>
 class ThreadSafeQueue {
     std::queue<T> queue_;
     mutable std::mutex mtx_;
-    std::condition_variable cv_;
+    std::condition_variable_any cv_;
 
 public:
     void push(const T& item);
 
-    bool pop(T& item);
+    bool pop(T& item, std::stop_token stoken);;
 
     bool empty() const;
 };

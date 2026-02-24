@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include <thread> 
+#include <stop_token> 
 #include "ConfigManager.hpp"
 #include "UartInterface.hpp"
 #include "MessageParser.hpp"
@@ -31,8 +32,8 @@ int main(int argc, char** argv) {
 
         ThreadSafeQueue<std::string> messageQueue;
 
-        std::thread receiver_thread([&uart, &messageQueue]() {
-            while (true) {
+        std::jthread receiver_thread([&uart, &messageQueue](std::stop_token stoken) {
+            while (!stoken.stop_requested()) {
                 try {
                     std::string rawLine = uart.readRawLine();
                     
@@ -43,7 +44,6 @@ int main(int argc, char** argv) {
                 catch (const serial::SerialException& e) {
                     std::cerr << "[Receiver] Warning: connection with port is lost!" << std::endl;
                     std::cerr << "[Receiver] Details: " << e.what() << std::endl;
-                    
                     break;
                 } 
                 catch (const std::exception& e) {
@@ -53,18 +53,21 @@ int main(int argc, char** argv) {
             }
         });
 
-        std::thread processor_thread([&messageQueue]() {
-            while (true) {
-                std::string msg;
+        std::jthread processor_thread([&messageQueue](std::stop_token stoken) {
+            
+            std::string msg;
+            
+            while (messageQueue.pop(msg, stoken)) {
                 
-                messageQueue.pop(msg); 
-
                 MessageParser::parseAndLog(msg);
+                
             }
+            
+            std::cout << "[Processor] Shutting down cleanly." << std::endl;
         });
 
         receiver_thread.join();
-        processor_thread.join();
+        processor_thread.request_stop();
 
     } catch (const std::exception& e) {
         std::cerr << "Critical error: " << e.what() << std::endl;

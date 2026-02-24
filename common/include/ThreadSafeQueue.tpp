@@ -8,10 +8,15 @@ void ThreadSafeQueue<T>::push(const T& item)
 }
 
 template<typename T>
-bool ThreadSafeQueue<T>::pop(T& item)
+bool ThreadSafeQueue<T>::pop(T& item, std::stop_token stoken)
 {
     std::unique_lock<std::mutex> lock(mtx_);
-    cv_.wait(lock, [this] { return !queue_.empty(); });
+    
+    bool wait_successful = cv_.wait(lock, stoken, [this] { return !queue_.empty(); });
+    
+    if (!wait_successful) {
+        return false; 
+    }
     
     item = std::move(queue_.front());
     queue_.pop();

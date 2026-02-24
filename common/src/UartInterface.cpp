@@ -5,7 +5,7 @@ UartInterface::UartInterface(const std::string& port, uint32_t baudrate) {
     try {
         serial_port.setPort(port);
         serial_port.setBaudrate(baudrate);
-        serial::Timeout timeout = serial::Timeout::simpleTimeout(1000);
+        serial::Timeout timeout = serial::Timeout::simpleTimeout(100);
         serial_port.setTimeout(timeout);
         serial_port.open();
     } catch (serial::IOException& e) {

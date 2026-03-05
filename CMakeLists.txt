@@ -8,11 +8,13 @@ find_package(serial REQUIRED)
 
 add_subdirectory(common)
 
-add_executable(coreapp main.cpp)
+add_executable(uart-mqtt-app main.cpp)
 
-target_link_libraries(coreapp
+target_link_libraries(uart-mqtt-app
     PRIVATE
     common
     jsoncpp_lib
     serial
+    paho-mqttpp3
+    paho-mqtt3as
 )

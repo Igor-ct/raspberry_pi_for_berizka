@@ -13,4 +13,6 @@ public:
 
     bool isOpen() const;
     std::string readRawLine();
+
+    void write(const std::string& data);
 };

@@ -30,3 +30,16 @@ std::string UartInterface::readRawLine() {
     }
     return "";
 }
+
+void UartInterface::write(const std::string& data) {
+    if (!serial_port.isOpen()) {
+        std::cerr << "[UART] Write failed: port not open.\n";
+        return;
+    }
+
+    try {
+        serial_port.write(data);
+    } catch (const serial::IOException& e) {
+        std::cerr << "[UART] Write failed: " << e.what() << std::endl;
+    }
+}

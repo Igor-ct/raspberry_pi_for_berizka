@@ -1,76 +1,60 @@
 #include <iostream>
 #include <string>
-#include <thread> 
-#include <stop_token> 
+#include <atomic>
+#include <csignal>
+#include <chrono>
+
 #include "ConfigManager.hpp"
 #include "UartInterface.hpp"
-#include "MessageParser.hpp"
-#include "logger.hpp"
-#include "ThreadSafeQueue.hpp" 
+#include "UartBackgroundService.hpp"
+#include "MqttService.hpp"
+#include "AppController.hpp"
+
+std::atomic<bool> g_running(true);
+
+void signalHandler(int) {
+    g_running = false;
+}
 
 int main(int argc, char** argv) {
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
 
-    std::string configPath = "config.json";
-
-    if (argc > 1) {
-        configPath = argv[1];
-    }
+    std::string configPath = (argc > 1) ? argv[1] : "config.json";
 
     try {
-        std::cout << "Loading configuration from: " << configPath << std::endl;
-        UartConfig config = ConfigManager::loadConfig(configPath);
-        std::cout << "Settings: Port=" << config.port << ", Baudrate=" << config.baudrate << std::endl;
+        SystemConfig config = ConfigManager::loadConfig(configPath);
 
-        UartInterface uart(config.port, config.baudrate);
-        
+        UartInterface uart(config.uart.port, config.uart.baudrate);
         if (!uart.isOpen()) {
-            std::cerr << "Failed to open UART port. Exiting..." << std::endl;
-            return 1;
+            std::cerr << "[WARN] Failed to open UART. Proceeding with MQTT only..." << std::endl;
         }
-        
-        std::cout << "Successfully connected. Starting background threads..." << std::endl;
 
-        ThreadSafeQueue<std::string> messageQueue;
+        UartBackgroundService uartService(uart);
+        uartService.start();
 
-        std::jthread receiver_thread([&uart, &messageQueue](std::stop_token stoken) {
-            while (!stoken.stop_requested()) {
-                try {
-                    std::string rawLine = uart.readRawLine();
-                    
-                    if (!rawLine.empty()) {
-                        messageQueue.push(rawLine);
-                    }
-                } 
-                catch (const serial::SerialException& e) {
-                    std::cerr << "[Receiver] Warning: connection with port is lost!" << std::endl;
-                    std::cerr << "[Receiver] Details: " << e.what() << std::endl;
-                    break;
-                } 
-                catch (const std::exception& e) {
-                    std::cerr << "[Receiver] Unknown error: " << e.what() << std::endl;
-                    break;
-                }
-            }
-        });
+        MqttService mqtt(
+            config.mqtt.broker,
+            config.mqtt.client_id,
+            config.mqtt.topic_status,
+            config.mqtt.topic_cmd
+        );
+        mqtt.connect();
 
-        std::jthread processor_thread([&messageQueue](std::stop_token stoken) {
-            
-            std::string msg;
-            
-            while (messageQueue.pop(msg, stoken)) {
-                
-                MessageParser::parseAndLog(msg);
-                
-            }
-            
-            std::cout << "[Processor] Shutting down cleanly." << std::endl;
-        });
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        receiver_thread.join();
-        processor_thread.request_stop();
+        AppController app(mqtt, uart);
+        app.run(g_running);
 
+        std::cout << "[SYSTEM] Initiating clean shutdown..." << std::endl;
+        uartService.stop();
+        mqtt.disconnect();
+
+    } catch (const mqtt::exception& exc) {
+        std::cerr << "[MQTT] Critical error: " << exc.what() << std::endl;
+        return 1;
     } catch (const std::exception& e) {
-        std::cerr << "Critical error: " << e.what() << std::endl;
+        std::cerr << "[SYSTEM] Error: " << e.what() << std::endl;
         return 1;
     }
 

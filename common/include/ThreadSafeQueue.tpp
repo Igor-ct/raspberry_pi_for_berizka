@@ -29,3 +29,10 @@ bool ThreadSafeQueue<T>::empty() const
     std::lock_guard<std::mutex> lock(mtx_);
     return queue_.empty();
 }
+
+template<typename T>
+void ThreadSafeQueue<T>::close() {
+        std::lock_guard<std::mutex> lock(mtx_);
+        closed_ = true;
+        cv_.notify_all();
+    }

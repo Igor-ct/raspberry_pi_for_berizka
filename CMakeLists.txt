@@ -15,4 +15,6 @@ target_link_libraries(coreapp
     common
     jsoncpp_lib
     serial
+    paho-mqttpp3
+    paho-mqtt3as
 )

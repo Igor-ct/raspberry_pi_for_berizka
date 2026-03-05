@@ -1,0 +1,13 @@
+{
+    // UART EXAMPLE SETTING
+    "uart": {
+        "port": "/dev/ttyUSB0",
+        "baud_rate": 115200
+    },
+    "mqtt": {
+        "broker": "YOUR_BROKER",
+        "client_id": "YOUR_CLIENT_ID",
+        "topic_status": "YOUR_STATUS_TOPIC",
+        "topic_cmd": "YOUR_CMD_TOPIC"
+    }
+}
